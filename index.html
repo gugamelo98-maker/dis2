@@ -95,10 +95,10 @@ select:disabled{opacity:.5;cursor:not-allowed}
 .preview-info h2{font-size:13px;font-weight:500}
 .preview-info p{font-size:11px;color:var(--green);font-family:'IBM Plex Mono',monospace}
 .preview-chat{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:5px;background-image:radial-gradient(circle at 1px 1px,rgba(255,255,255,.02) 1px,transparent 0);background-size:24px 24px}
-.bubble{max-width:300px;align-self:flex-end;background:var(--bubble);border-radius:12px 12px 2px 12px;padding:10px 13px;font-size:13px;line-height:1.65;color:var(--text);border:1px solid rgba(37,211,102,.12);display:none;word-break:break-word}
+.bubble{max-width:300px;align-self:flex-end;background:var(--bubble);border-radius:12px 12px 2px 12px;padding:10px 13px;font-size:13px;line-height:1.65;color:var(--text);border:1px solid rgba(37,211,102,.12);display:block;word-break:break-word}
 .bubble-time{font-size:10px;color:var(--muted);text-align:right;font-family:'IBM Plex Mono',monospace;align-self:flex-end}
 .highlight{color:var(--green);font-weight:500}
-.preview-btns{display:none;flex-direction:column;gap:4px;align-self:flex-end;width:100%;max-width:300px}
+.preview-btns{display:flex;flex-direction:column;gap:4px;align-self:flex-end;width:100%;max-width:300px}
 .preview-btn{background:var(--bubble);border:1px solid rgba(37,211,102,.2);border-radius:8px;padding:9px 13px;text-align:center;font-size:13px;color:var(--green)}
 .preview-media-thumb{max-width:300px;align-self:flex-end;border-radius:10px;max-height:160px;object-fit:cover;display:none;border:1px solid rgba(37,211,102,.12)}
 
@@ -614,13 +614,18 @@ function updatePreview() {
   const timeEl = document.getElementById('preview-time');
   if (!currentTemplate) return;
   const vars = getVarValues();
-  if (!vars.some(v=>v.trim())) { bubble.style.display='none'; btnsWrap.style.display='none'; timeEl.textContent=''; return; }
   let body = currentTemplate.body;
-  vars.forEach((v,i) => { body = body.split('{{'+(i+1)+'}}').join(v||''); });
+  // Substituir variáveis preenchidas; manter placeholder visual para as vazias
+  vars.forEach((v,i) => {
+    body = body.split('{{'+(i+1)+'}}').join(
+      v.trim() ? `<span class="highlight">${v}</span>` : `<span style="opacity:.4;font-style:italic">{{${i+1}}}</span>`
+    );
+  });
+  // Manter placeholders não substituídos visíveis
+  body = body.replace(/\{\{(\d+)\}\}/g, '<span style="opacity:.4;font-style:italic">{{$1}}</span>');
   body = body
-    .replace(/\\n/g,'\n')
-    .replace(/\*([^*\n]+)\*/g,'<strong class="highlight">$1</strong>')
-    .replace(/\n/g,'<br>');
+    .replace(/\n/g,'<br>')
+    .replace(/\*([^*<]+)\*/g,'<strong class="highlight">$1</strong>');
   bubble.style.display=''; bubble.innerHTML=body;
   if (currentTemplate.buttons?.length) {
     btnsWrap.style.display='flex';
