@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gerenciador de Números WPP</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #f5f5f5; color: #111; min-height: 100vh; padding: 24px; }
+
+  h1 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+  .sub { font-size: 13px; color: #666; margin-bottom: 24px; }
+
+  .card {
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    margin-bottom: 14px;
+  }
+
+  /* Form */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-size: 12px; font-weight: 500; color: #555; }
+  input {
+    padding: 8px 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: monospace;
+    color: #111;
+    background: #fafafa;
+    transition: border .15s;
+  }
+  input:focus { outline: none; border-color: #25d366; background: #fff; }
+  input::placeholder { color: #bbb; }
+
+  .btn {
+    padding: 9px 18px;
+    border-radius: 6px;
+    border: none;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .btn-green { background: #25d366; color: #fff; }
+  .btn-green:hover { background: #1eb358; }
+  .btn-outline { background: #fff; border: 1px solid #ddd; color: #444; }
+  .btn-outline:hover { border-color: #aaa; color: #111; }
+  .btn-red { background: #fff; border: 1px solid #fca5a5; color: #dc2626; }
+  .btn-red:hover { background: #fef2f2; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* Lista de números */
+  .numero-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all .15s;
+    position: relative;
+  }
+  .numero-item:hover { border-color: #25d366; background: #f0fff4; }
+  .numero-item.selecionado { border-color: #25d366; background: #f0fff4; }
+  .numero-item.selecionado::after {
+    content: 'ATIVO';
+    position: absolute;
+    right: 12px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #25d366;
+    letter-spacing: .06em;
+  }
+
+  .num-avatar {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: #e8faf0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .num-info { flex: 1; min-width: 0; }
+  .num-nome { font-size: 13px; font-weight: 600; color: #111; }
+  .num-id { font-size: 11px; color: #888; font-family: monospace; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .num-token { font-size: 11px; color: #aaa; font-family: monospace; margin-top: 1px; }
+
+  .num-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+  .badge-ok { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: #16a34a; background: #dcfce7; padding: 2px 8px; border-radius: 20px; }
+  .badge-err { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: #dc2626; background: #fee2e2; padding: 2px 8px; border-radius: 20px; }
+  .badge-pend { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: #92400e; background: #fef3c7; padding: 2px 8px; border-radius: 20px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  .empty { text-align: center; padding: 28px; color: #aaa; font-size: 13px; }
+  .empty span { font-size: 28px; display: block; margin-bottom: 8px; }
+
+  .actions-row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+
+  /* Toast */
+  #toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: #111; color: #fff;
+    padding: 10px 16px; border-radius: 8px;
+    font-size: 13px; display: none;
+    gap: 8px; align-items: center;
+    box-shadow: 0 4px 20px rgba(0,0,0,.2);
+    z-index: 999;
+  }
+  #toast.show { display: flex; }
+  #toast.ok { background: #14532d; }
+  #toast.erro { background: #7f1d1d; }
+
+  /* Modal */
+  .modal-bg {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.4);
+    z-index: 100;
+    align-items: center; justify-content: center;
+  }
+  .modal-bg.show { display: flex; }
+  .modal {
+    background: #fff; border-radius: 12px;
+    padding: 24px; width: 380px;
+    box-shadow: 0 8px 40px rgba(0,0,0,.15);
+  }
+  .modal h3 { font-size: 15px; margin-bottom: 4px; }
+  .modal p { font-size: 13px; color: #666; margin-bottom: 16px; }
+  .modal .btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+
+  .sep { height: 1px; background: #f0f0f0; margin: 14px 0; }
+  .info-box { background: #f0fff4; border: 1px solid #86efac; border-radius: 6px; padding: 10px 12px; font-size: 12px; color: #166534; margin-top: 10px; line-height: 1.6; }
+  .info-box b { font-weight: 600; }
+</style>
+</head>
+<body>
+
+<h1>📱 Números WhatsApp Business</h1>
+<p class="sub">Gerencie os números conectados e selecione qual usar nos disparos.</p>
+
+<!-- Adicionar número -->
+<div class="card">
+  <div class="card-title">Adicionar novo número</div>
+  <div class="form-grid">
+    <div class="form-group">
+      <label>Nome / Identificação</label>
+      <input id="inp-nome" type="text" placeholder="Ex: Comercial, Suporte...">
+    </div>
+    <div class="form-group">
+      <label>Phone Number ID</label>
+      <input id="inp-phone-id" type="text" placeholder="869480682907991">
+    </div>
+    <div class="form-group">
+      <label>WABA ID (Business Account ID)</label>
+      <input id="inp-waba-id" type="text" placeholder="1865416041061670">
+    </div>
+    <div class="form-group">
+      <label>Access Token (Bearer)</label>
+      <input id="inp-token" type="password" placeholder="EAAMPc7...">
+    </div>
+  </div>
+  <div class="actions-row">
+    <button class="btn btn-outline" onclick="testarConexao()">🔍 Testar conexão</button>
+    <button class="btn btn-green" onclick="adicionarNumero()">+ Adicionar número</button>
+  </div>
+  <div id="teste-result" style="display:none;margin-top:10px;"></div>
+</div>
+
+<!-- Lista de números -->
+<div class="card">
+  <div class="card-title">Números cadastrados</div>
+  <div id="lista-numeros">
+    <div class="empty"><span>📵</span>Nenhum número cadastrado ainda.</div>
+  </div>
+  <div class="sep"></div>
+  <div class="info-box">
+    <b>Como funciona:</b> clique em um número para selecioná-lo como ativo. Ele será usado automaticamente em todos os disparos. Você pode alternar entre números a qualquer momento.
+  </div>
+</div>
+
+<!-- Modal confirmar remoção -->
+<div class="modal-bg" id="modal-remover">
+  <div class="modal">
+    <h3>Remover número?</h3>
+    <p>Esta ação não pode ser desfeita. O número será removido da lista.</p>
+    <div class="btns">
+      <button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>
+      <button class="btn btn-red" onclick="confirmarRemover()">Remover</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ─── Storage ───────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'wpp_numeros';
+const ATIVO_KEY   = 'wpp_numero_ativo';
+
+function salvarNumeros(lista) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(lista));
+}
+function carregarNumeros() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+  catch { return []; }
+}
+function getAtivo() {
+  return localStorage.getItem(ATIVO_KEY) || null;
+}
+function setAtivo(id) {
+  localStorage.setItem(ATIVO_KEY, id);
+}
+
+// ─── Estado ────────────────────────────────────────────────────────────────
+let numeros = carregarNumeros();
+let ativoId = getAtivo();
+let paraRemover = null;
+
+// ─── Render ────────────────────────────────────────────────────────────────
+function render() {
+  const lista = document.getElementById('lista-numeros');
+  if (numeros.length === 0) {
+    lista.innerHTML = '<div class="empty"><span>📵</span>Nenhum número cadastrado ainda.</div>';
+    return;
+  }
+
+  lista.innerHTML = numeros.map(n => `
+    <div class="numero-item ${n.id === ativoId ? 'selecionado' : ''}" onclick="selecionarNumero('${n.id}')">
+      <div class="num-avatar">📱</div>
+      <div class="num-info">
+        <div class="num-nome">${esc(n.nome)}</div>
+        <div class="num-id">Phone ID: ${esc(n.phoneNumberId)}</div>
+        <div class="num-id">WABA ID: ${esc(n.wabaId)}</div>
+        <div class="num-token">Token: ${'•'.repeat(16)}${esc(n.token.slice(-6))}</div>
+      </div>
+      <div class="num-actions" onclick="event.stopPropagation()">
+        <span class="${n.status === 'ok' ? 'badge-ok' : n.status === 'erro' ? 'badge-err' : 'badge-pend'}">
+          <span class="dot"></span>
+          ${n.status === 'ok' ? 'Conectado' : n.status === 'erro' ? 'Erro' : 'Não testado'}
+        </span>
+        <button class="btn btn-outline" style="padding:5px 10px;font-size:11px;" onclick="testarNumero('${n.id}')">Testar</button>
+        <button class="btn btn-red" style="padding:5px 10px;font-size:11px;" onclick="abrirModal('${n.id}')">✕</button>
+      </div>
+    </div>
+  `).join('');
+
+  // Expõe o número ativo globalmente para outras páginas consultarem
+  const ativo = numeros.find(n => n.id === ativoId);
+  if (ativo) {
+    window.__wppAtivo = {
+      phoneNumberId: ativo.phoneNumberId,
+      wabaId: ativo.wabaId,
+      token: ativo.token,
+      nome: ativo.nome
+    };
+  }
+}
+
+// ─── Ações ─────────────────────────────────────────────────────────────────
+function adicionarNumero() {
+  const nome      = document.getElementById('inp-nome').value.trim();
+  const phoneId   = document.getElementById('inp-phone-id').value.trim();
+  const wabaId    = document.getElementById('inp-waba-id').value.trim();
+  const token     = document.getElementById('inp-token').value.trim();
+
+  if (!nome || !phoneId || !wabaId || !token) {
+    toast('Preencha todos os campos.', 'erro'); return;
+  }
+  if (numeros.find(n => n.phoneNumberId === phoneId)) {
+    toast('Esse Phone Number ID já está cadastrado.', 'erro'); return;
+  }
+
+  const num = {
+    id: crypto.randomUUID(),
+    nome, phoneNumberId: phoneId, wabaId, token,
+    status: 'pendente',
+    criadoEm: new Date().toISOString()
+  };
+  numeros.push(num);
+  salvarNumeros(numeros);
+
+  // Se for o primeiro, já ativa
+  if (numeros.length === 1) { ativoId = num.id; setAtivo(ativoId); }
+
+  // Limpar campos
+  ['inp-nome','inp-phone-id','inp-waba-id','inp-token'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('teste-result').style.display = 'none';
+
+  render();
+  toast(`Número "${nome}" adicionado! ✓`, 'ok');
+}
+
+function selecionarNumero(id) {
+  ativoId = id;
+  setAtivo(id);
+  render();
+  const n = numeros.find(n => n.id === id);
+  toast(`Número ativo: ${n.nome}`, 'ok');
+}
+
+async function testarNumero(id) {
+  const n = numeros.find(x => x.id === id);
+  if (!n) return;
+  n.status = 'pendente';
+  salvarNumeros(numeros);
+  render();
+  await _testar(n.wabaId, n.token, id);
+}
+
+async function testarConexao() {
+  const wabaId = document.getElementById('inp-waba-id').value.trim();
+  const token  = document.getElementById('inp-token').value.trim();
+  if (!wabaId || !token) { toast('Preencha WABA ID e Token para testar.', 'erro'); return; }
+  const res = document.getElementById('teste-result');
+  res.style.display = 'block';
+  res.innerHTML = '<span class="badge-pend"><span class="dot"></span>Testando...</span>';
+  await _testar(wabaId, token, null, res);
+}
+
+async function _testar(wabaId, token, numId, resEl) {
+  try {
+    const r = await fetch(
+      `https://graph.facebook.com/v19.0/${wabaId}/message_templates?limit=1`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const json = await r.json();
+    const ok = r.ok && !json.error;
+
+    if (numId) {
+      const n = numeros.find(x => x.id === numId);
+      if (n) { n.status = ok ? 'ok' : 'erro'; salvarNumeros(numeros); render(); }
+    }
+    if (resEl) {
+      resEl.innerHTML = ok
+        ? '<span class="badge-ok"><span class="dot"></span>Conexão OK — credenciais válidas!</span>'
+        : `<span class="badge-err"><span class="dot"></span>Erro: ${json.error?.message || 'Token inválido'}</span>`;
+    }
+    if (!resEl) toast(ok ? 'Conexão OK ✓' : 'Erro na conexão', ok ? 'ok' : 'erro');
+  } catch(e) {
+    if (numId) { const n = numeros.find(x=>x.id===numId); if(n){n.status='erro';salvarNumeros(numeros);render();} }
+    if (resEl) resEl.innerHTML = '<span class="badge-err"><span class="dot"></span>Erro de rede ou CORS</span>';
+    else toast('Erro de rede', 'erro');
+  }
+}
+
+// ─── Modal remover ─────────────────────────────────────────────────────────
+function abrirModal(id) { paraRemover = id; document.getElementById('modal-remover').classList.add('show'); }
+function fecharModal() { paraRemover = null; document.getElementById('modal-remover').classList.remove('show'); }
+function confirmarRemover() {
+  numeros = numeros.filter(n => n.id !== paraRemover);
+  if (ativoId === paraRemover) {
+    ativoId = numeros[0]?.id || null;
+    setAtivo(ativoId || '');
+  }
+  salvarNumeros(numeros);
+  fecharModal();
+  render();
+  toast('Número removido.', '');
+}
+
+// ─── Toast ────────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, tipo) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `show ${tipo}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.className = '', 3000);
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>
